@@ -11,13 +11,29 @@ Dokumentasi lengkap: lihat `docs/README.md`.
 
 ## Cara pakai
 1. Tambahkan dependency ke project Spring Boot Anda (Maven):
-   ```xml
-   <dependency>
-     <groupId>com.yahya</groupId>
-     <artifactId>common-logger</artifactId>
-     <version>1.0.0</version>
-   </dependency>
-   ```
+   - Jika sudah dipublish ke Maven Central/registry internal:
+     ```xml
+     <dependency>
+       <groupId>com.yahya</groupId>
+       <artifactId>common-logger</artifactId>
+       <version>1.0.1</version>
+     </dependency>
+     ```
+   - Jika ingin langsung konsumsi dari GitHub (JitPack) dengan tag `1.0.1`:
+     ```xml
+     <repositories>
+       <repository>
+         <id>jitpack.io</id>
+         <url>https://jitpack.io</url>
+       </repository>
+     </repositories>
+
+     <dependency>
+       <groupId>com.github.yahyahouse</groupId>
+       <artifactId>common-logger</artifactId>
+       <version>1.0.1</version>
+     </dependency>
+     ```
 
 2. Annotasi class atau method dengan `@Loggable` untuk mengaktifkan logging:
    ```java
@@ -86,7 +102,7 @@ Library ini ditujukan sebagai pondasi; Anda dapat menambahkan formatter, appende
 <dependency>
   <groupId>com.yahya</groupId>
   <artifactId>common-logger</artifactId>
-  <version>1.0.0</version>
+     <version>1.0.1</version>
 </dependency>
 ```
 2) Konfigurasi `application.properties` hanya untuk menentukan level log sukses yang ingin ditampilkan (log ERROR selalu keluar):

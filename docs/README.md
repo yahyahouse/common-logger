@@ -10,13 +10,29 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
 
 ## Cara pakai singkat
 1) Tambahkan dependency di `pom.xml`:
-   ```xml
-   <dependency>
-     <groupId>com.yahya</groupId>
-     <artifactId>common-logger</artifactId>
-     <version>1.0.0</version>
-   </dependency>
-   ```
+   - Jika sudah dipublish ke Maven Central/registry internal:
+     ```xml
+     <dependency>
+       <groupId>com.yahya</groupId>
+       <artifactId>common-logger</artifactId>
+       <version>1.0.1</version>
+     </dependency>
+     ```
+   - Jika ingin konsumsi langsung dari GitHub (JitPack) dengan tag `1.0.1`:
+     ```xml
+     <repositories>
+       <repository>
+         <id>jitpack.io</id>
+         <url>https://jitpack.io</url>
+       </repository>
+     </repositories>
+
+     <dependency>
+       <groupId>com.github.yahyahouse</groupId>
+       <artifactId>common-logger</artifactId>
+       <version>1.0.1</version>
+     </dependency>
+     ```
 2) (Opsional) Set properti di `application.yml` / `application.properties` untuk menyesuaikan header, MDC key, dan level log.
 3) Anotasi method/class dengan `@Loggable`.
 4) Pastikan level logger `com.yahya.commonlogger` diaktifkan minimal sesuai `common.logger.log-level`.
