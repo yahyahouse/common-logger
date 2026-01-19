@@ -2,4 +2,4 @@ jdk:
   - openjdk17
 
 install:
-  - mvn -q -Dmaven.repo.local=$HOME/.m2/repository -DskipTests install
+  - ./mvnw -q -Dmaven.repo.local=$HOME/.m2/repository -DskipTests install
