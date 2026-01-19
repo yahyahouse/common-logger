@@ -13,12 +13,12 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
    - Jika sudah dipublish ke Maven Central/registry internal:
      ```xml
      <dependency>
-       <groupId>com.yahya</groupId>
+       <groupId>com.github.yahyahouse</groupId>
        <artifactId>common-logger</artifactId>
-       <version>1.0.1</version>
+       <version>1.0.2</version>
      </dependency>
      ```
-   - Jika ingin konsumsi langsung dari GitHub (JitPack) dengan tag `1.0.1`:
+   - Jika ingin konsumsi langsung dari GitHub (JitPack) dengan tag `1.0.2`:
      ```xml
      <repositories>
        <repository>
@@ -30,7 +30,7 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
      <dependency>
        <groupId>com.github.yahyahouse</groupId>
        <artifactId>common-logger</artifactId>
-       <version>1.0.1</version>
+       <version>1.0.2</version>
      </dependency>
      ```
 2) (Opsional) Set properti di `application.yml` / `application.properties` untuk menyesuaikan header, MDC key, dan level log.

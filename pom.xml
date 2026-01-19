@@ -11,9 +11,9 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.yahya</groupId>
+    <groupId>com.github.yahyahouse</groupId>
     <artifactId>common-logger</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <name>common-logger</name>
     <description>Spring Boot friendly logger library</description>
     <packaging>jar</packaging>
