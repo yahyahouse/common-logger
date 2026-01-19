@@ -1,0 +1,6 @@
+The following files have been resolved:
+   org.junit.jupiter:junit-jupiter-api:jar:5.10.2:test[36m -- module org.junit.jupiter.api[m
+   org.junit.platform:junit-platform-commons:jar:1.10.2:test[36m -- module org.junit.platform.commons[m
+   org.junit.jupiter:junit-jupiter-engine:jar:5.10.2:test[36m -- module org.junit.jupiter.engine[m
+   org.junit.platform:junit-platform-engine:jar:1.10.2:test[36m -- module org.junit.platform.engine[m
+

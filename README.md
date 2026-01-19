@@ -2,6 +2,8 @@
 
 Spring Boot friendly logger library that provides correlation id handling and an AOP-based `@Loggable` annotation for consistent, structured method logging.
 
+Dokumentasi lengkap: lihat `docs/README.md`.
+
 ## Fitur
 - Auto-configuration (`CommonLoggerAutoConfiguration`) terdaftar otomatis lewat Spring Boot 3 `AutoConfiguration.imports`.
 - Filter `CorrelationIdFilter` memastikan setiap request HTTP memiliki correlation id yang disimpan di MDC dan dikembalikan di header response.
