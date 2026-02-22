@@ -33,11 +33,6 @@ public class CommonLoggerProperties {
      */
     private String transactionIdMdcKey;
 
-    /**
-     * MDC key used to resolve the internal transaction identifier (defaults to correlationIdMdcKey).
-     */
-    private String internalTransactionIdMdcKey;
-
     public String getCorrelationIdHeader() {
         return correlationIdHeader;
     }
@@ -92,13 +87,5 @@ public class CommonLoggerProperties {
 
     public void setTransactionIdMdcKey(String transactionIdMdcKey) {
         this.transactionIdMdcKey = transactionIdMdcKey;
-    }
-
-    public String getInternalTransactionIdMdcKey() {
-        return internalTransactionIdMdcKey == null ? correlationIdMdcKey : internalTransactionIdMdcKey;
-    }
-
-    public void setInternalTransactionIdMdcKey(String internalTransactionIdMdcKey) {
-        this.internalTransactionIdMdcKey = internalTransactionIdMdcKey;
     }
 }

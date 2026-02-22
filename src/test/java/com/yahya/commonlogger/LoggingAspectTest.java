@@ -23,7 +23,6 @@ class LoggingAspectTest {
         props.setApiId("SendNotification");
         props.setSuccessHttpStatusCode(200);
         props.setTransactionIdMdcKey("transactionId");
-        props.setInternalTransactionIdMdcKey("internalTxId");
 
         StructuredLogCustomizer customizer = (payload, jp, result, duration, success, failure) -> {
             payload.put("tenantId", "t-1");
@@ -34,7 +33,6 @@ class LoggingAspectTest {
         ProceedingJoinPoint pjp = mockJoinPoint("doWork", "com.example.Demo", new Object[]{"arg1"}, "ok");
         MDC.put(props.getCorrelationIdMdcKey(), "corr-123");
         MDC.put("transactionId", "tx-123");
-        MDC.put("internalTxId", "internal-456");
         String logs;
         try {
             logs = captureOutput(() -> {
@@ -48,7 +46,6 @@ class LoggingAspectTest {
         assertThat(logs).contains("\"logLevel\": \"info\"");
         assertThat(logs).contains("\"apiId\": \"SendNotification\"");
         assertThat(logs).contains("\"httpStatusCode\": 200");
-        assertThat(logs).contains("\"internalTransactionId\": \"internal-456\"");
         assertThat(logs).contains("\"logMessage\": \"SendNotification-dowork Completed\"");
         assertThat(logs).contains("\"logPoint\": \"SendNotification-dowork-End\"");
         assertThat(logs).contains("\"transactionId\": \"tx-123\"");
@@ -134,15 +131,13 @@ class LoggingAspectTest {
 
         assertThat(logs).contains("\"httpStatusCode\": 201");
         assertThat(logs).contains("\"transactionId\": \"corr-xyz\"");
-        assertThat(logs).contains("\"internalTransactionId\": \"corr-xyz\"");
     }
 
     @Test
-    void usesCustomErrorStatusCodeAndInternalTransactionId() throws Throwable {
+    void usesCustomErrorStatusCodeAndTransactionId() throws Throwable {
         CommonLoggerProperties props = new CommonLoggerProperties();
         props.setErrorHttpStatusCode(503);
         props.setTransactionIdMdcKey("txid");
-        props.setInternalTransactionIdMdcKey("intid");
         LoggingAspect aspect = new LoggingAspect(props, List.of());
 
         ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
@@ -154,7 +149,6 @@ class LoggingAspectTest {
         when(pjp.proceed()).thenThrow(new IllegalStateException("boom"));
 
         MDC.put("txid", "tx-1");
-        MDC.put("intid", "int-1");
         String logs;
         try {
             logs = captureOutput(() -> assertThatThrownBy(() -> aspect.logAround(pjp)).isInstanceOf(IllegalStateException.class));
@@ -164,7 +158,6 @@ class LoggingAspectTest {
 
         assertThat(logs).contains("\"httpStatusCode\": 503");
         assertThat(logs).contains("\"transactionId\": \"tx-1\"");
-        assertThat(logs).contains("\"internalTransactionId\": \"int-1\"");
         assertThat(logs).contains("\"logException\": \"java.lang.IllegalStateException: boom");
         assertThat(logs).contains("\"logLevel\": \"error\"");
     }

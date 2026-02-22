@@ -55,7 +55,6 @@ Dokumentasi lengkap: lihat `docs/README.md`.
        correlation-id-header: X-Correlation-Id            # header yang dibaca/ditulis
        correlation-id-mdc-key: correlationId              # key MDC utama (dipakai juga sebagai default transactionId)
        transaction-id-mdc-key: correlationId              # key MDC untuk transactionId (opsional)
-       internal-transaction-id-mdc-key: correlationId     # key MDC untuk internalTransactionId (opsional)
        api-id: SendNotification                           # identifier API/use case
        log-level: INFO                                    # level log untuk eksekusi sukses (@Loggable)
        success-http-status-code: 200                      # status sukses
@@ -66,7 +65,6 @@ Dokumentasi lengkap: lihat `docs/README.md`.
    common.logger.correlation-id-header=X-Correlation-Id
    common.logger.correlation-id-mdc-key=correlationId
    common.logger.transaction-id-mdc-key=correlationId
-   common.logger.internal-transaction-id-mdc-key=correlationId
    common.logger.api-id=SendNotification
    common.logger.log-level=INFO
    common.logger.success-http-status-code=200
@@ -124,7 +122,7 @@ public class ExampleService {
     }
 }
 ```
-4) Jalankan aplikasi. Setiap pemanggilan method `@Loggable` akan mencetak JSON ke stdout/stderr dengan field: `logLevel`, `apiId`, `httpStatusCode`, `transactionId`, `internalTransactionId`, `logMessage`, `logPoint`, `logTimestamp`, `processTime` (error menambah `error` + `logException`).
+4) Jalankan aplikasi. Setiap pemanggilan method `@Loggable` akan mencetak JSON ke stdout/stderr dengan field: `logLevel`, `apiId`, `httpStatusCode`, `transactionId`, `logMessage`, `logPoint`, `logTimestamp`, `processTime` (error menambah `error` + `logException`).
 
 ### Alternatif: set log-level langsung di kode (tanpa file config)
 ```java
@@ -147,7 +145,7 @@ Setelah itu, cukup anotasi method dengan `@Loggable` seperti biasa.
 
 ## Menggunakan log-nya
 - Payload dikirim langsung ke stdout/stderr sebagai JSON tanpa prefix logger.
-- Correlation id otomatis disiapkan oleh `CorrelationIdFilter` (jika starter web ada). Key `transactionId` dan `internalTransactionId` diambil dari MDC dengan key yang dapat dikonfigurasi (default: `correlationId`). Header request dibaca dari `correlation-id-header`; jika tidak ada, nilai baru di-generate dan dikembalikan di response.
+- Correlation id otomatis disiapkan oleh `CorrelationIdFilter` (jika starter web ada). Key `transactionId` diambil dari MDC dengan key yang dapat dikonfigurasi (default: `correlationId`). Header request dibaca dari `correlation-id-header`; jika tidak ada, nilai baru di-generate dan dikembalikan di response.
 - Anda dapat menambah/override field dinamis per call lewat `StructuredLogCustomizer`.
 - Agar log terlihat, pastikan level logger `com.yahya.commonlogger` diaktifkan minimal pada level yang Anda set di `log-level`.
 - Build library ini dengan Maven: `mvn clean package` (menghasilkan JAR biasa, bukan fat jar).
@@ -183,7 +181,6 @@ class LoggingCustomizerConfig {
   "logLevel": "info",
   "apiId": "SendNotification",
   "httpStatusCode": 200,
-  "internalTransactionId": "8edcc9b4-10c1-4dfa-bd69-dab673801039",
   "logMessage": "SendNotification-sendnotification Completed",
   "logPoint": "SendNotification-sendnotification-End",
   "logTimestamp": "2026-01-07T15:03:33.961+07:00",
@@ -191,4 +188,4 @@ class LoggingCustomizerConfig {
   "transactionId": "pb19b977b85f011728001196723166aSae400000000"
 }
 ```
-`logLevel` mengikuti konfigurasi; field error otomatis ditambahkan saat terjadi exception termasuk `logException` (stack trace ter-escape). `transactionId`/`internalTransactionId` diambil dari MDC (fallback: `correlationId`). Field tambahan bisa ditambahkan via `StructuredLogCustomizer`.
+`logLevel` mengikuti konfigurasi; field error otomatis ditambahkan saat terjadi exception termasuk `logException` (stack trace ter-escape). `transactionId` diambil dari MDC (fallback: `correlationId`). Field tambahan bisa ditambahkan via `StructuredLogCustomizer`.

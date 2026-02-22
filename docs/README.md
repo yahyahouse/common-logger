@@ -43,7 +43,6 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
 | `common.logger.correlation-id-header`      | `X-Correlation-Id`  | Header HTTP yang dibaca/ditulis filter.                                       |
 | `common.logger.correlation-id-mdc-key`     | `correlationId`     | Key MDC utama untuk correlation id.                                           |
 | `common.logger.transaction-id-mdc-key`     | `correlationId`     | Key MDC untuk `transactionId` (fallback ke correlation id).                   |
-| `common.logger.internal-transaction-id-mdc-key` | `correlationId` | Key MDC untuk `internalTransactionId` (fallback ke correlation id).           |
 | `common.logger.api-id`                     | kosong              | Identifier API/use case; jika kosong, pakai nama class target.                |
 | `common.logger.log-level`                  | `INFO`              | Level log untuk eksekusi sukses (`INFO`, `DEBUG`, `TRACE`, dll).               |
 | `common.logger.success-http-status-code`   | `200`               | Kode status yang dicetak untuk eksekusi sukses.                               |
@@ -52,7 +51,7 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
 ## Alur kerja
 - Saat ada request HTTP:
   - `CorrelationIdFilter` membaca header `correlation-id-header`. Jika kosong, generate UUID baru.
-  - Nilai disimpan di MDC dengan key `correlation-id-mdc-key` (juga jadi default `transactionId`/`internalTransactionId`).
+  - Nilai disimpan di MDC dengan key `correlation-id-mdc-key` (juga jadi default `transactionId`).
   - Header yang sama dikembalikan di response.
 - Saat method `@Loggable` dieksekusi:
   - `LoggingAspect` mencatat waktu mulai, mengeksekusi method, lalu membangun payload log JSON.
@@ -62,7 +61,7 @@ Library Spring Boot untuk logging terstruktur dengan dukungan correlation id, an
 
 ## Format payload log
 Field default yang dicetak:
-- `logLevel` (lowercase), `apiId`, `httpStatusCode`, `transactionId`, `internalTransactionId`
+- `logLevel` (lowercase), `apiId`, `httpStatusCode`, `transactionId`
 - `logMessage` (`<apiId>-<method> Completed/Failed`)
 - `logPoint` (`<apiId>-<method>-End/Error`)
 - `logTimestamp` (ISO offset), `processTime` (ms)
@@ -75,7 +74,6 @@ Contoh sukses:
   "apiId": "SendNotification",
   "httpStatusCode": 200,
   "transactionId": "corr-123",
-  "internalTransactionId": "corr-123",
   "logMessage": "SendNotification-send Completed",
   "logPoint": "SendNotification-send-End",
   "logTimestamp": "2026-01-19T11:04:30.000+07:00",
@@ -90,7 +88,6 @@ Contoh error:
   "apiId": "SendNotification",
   "httpStatusCode": 500,
   "transactionId": "corr-123",
-  "internalTransactionId": "corr-123",
   "logMessage": "SendNotification-send Failed",
   "logPoint": "SendNotification-send-Error",
   "logTimestamp": "2026-01-19T11:04:30.000+07:00",
@@ -122,5 +119,5 @@ class LoggingCustomizerConfig {
 ## Tips penggunaan
 - Untuk melihat log sukses di level `DEBUG/TRACE`, set `common.logger.log-level` dan aktifkan logger paket `com.yahya.commonlogger` pada level yang sama.
 - Jika aplikasi tidak memakai starter web, Anda bisa mendeklarasikan `CommonLoggerProperties` saja (tanpa filter) untuk penggunaan non-HTTP.
-- `transactionId` dan `internalTransactionId` diisi dari MDC; set key khusus jika Anda sudah menaruh ID sendiri di MDC sebelum memanggil `@Loggable`.
+- `transactionId` diisi dari MDC; set key khusus jika Anda sudah menaruh ID sendiri di MDC sebelum memanggil `@Loggable`.
 - Build/test: `mvn clean test` atau `mvn clean package` (menghasilkan JAR biasa, bukan fat JAR).

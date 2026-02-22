@@ -69,7 +69,6 @@ public class LoggingAspect {
         payload.put("logLevel", logLevel.name().toLowerCase(Locale.ROOT));
         payload.put("apiId", resolveApiId(joinPoint));
         payload.put("httpStatusCode", resolveStatusCode(failure));
-        payload.put("internalTransactionId", resolveInternalTransactionId());
         payload.put("logMessage", buildLogMessage(joinPoint, success));
         payload.put("logPoint", buildLogPoint(joinPoint, success));
         payload.put("logTimestamp", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(OffsetDateTime.now()));
@@ -130,14 +129,6 @@ public class LoggingAspect {
 
     private int resolveStatusCode(Throwable failure) {
         return failure == null ? properties.getSuccessHttpStatusCode() : properties.getErrorHttpStatusCode();
-    }
-
-    private String resolveInternalTransactionId() {
-        String id = MDC.get(properties.getInternalTransactionIdMdcKey());
-        if (StringUtils.hasText(id)) {
-            return id;
-        }
-        return resolveTransactionId();
     }
 
     private String resolveTransactionId() {
