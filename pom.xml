@@ -13,7 +13,7 @@
 
     <groupId>com.github.yahyahouse</groupId>
     <artifactId>common-logger</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <name>common-logger</name>
     <description>Spring Boot friendly logger library</description>
     <packaging>jar</packaging>
@@ -43,6 +43,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>

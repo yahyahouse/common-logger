@@ -162,6 +162,39 @@ class LoggingAspectTest {
         assertThat(logs).contains("\"logLevel\": \"error\"");
     }
 
+    @Test
+    void logsWithOnlyTransactionIdSet() throws Throwable {
+        // 1. Setup properties with a specific transactionIdMdcKey
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        props.setApiId("TransactionOnlyApi");
+        props.setTransactionIdMdcKey("customTxKey");
+        LoggingAspect aspect = new LoggingAspect(props, List.of());
+
+        // 2. Mock the advised method call
+        ProceedingJoinPoint pjp = mockJoinPoint("process", "com.example.Service", new Object[0], "ok");
+
+        // 3. Set ONLY the transactionId in MDC, no correlationId
+        MDC.put("customTxKey", "just-a-transaction-id");
+        String logs;
+        try {
+            // 4. Execute the aspect and capture logs
+            logs = captureOutput(() -> aspect.logAround(pjp));
+        } finally {
+            // 5. Clean up MDC
+            MDC.clear();
+        }
+
+        // 6. Assert the output
+        assertThat(logs).contains("\"transactionId\": \"just-a-transaction-id\"");
+        // Assert that other configured and default values are present
+        assertThat(logs).contains("\"apiId\": \"TransactionOnlyApi\"");
+        assertThat(logs).contains("\"logLevel\": \"info\"");
+        assertThat(logs).contains("\"httpStatusCode\": 200");
+        assertThat(logs).contains("\"logMessage\": \"TransactionOnlyApi-process Completed\"");
+        // Assert that correlationId is NOT present, as it was never set in MDC
+        assertThat(logs).doesNotContain("\"correlationId\":");
+    }
+
     private String captureOutput(ThrowingCallable callable) throws Throwable {
         PrintStream originalOut = System.out;
         PrintStream originalErr = System.err;

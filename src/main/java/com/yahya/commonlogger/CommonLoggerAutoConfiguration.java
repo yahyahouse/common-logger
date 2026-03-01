@@ -42,4 +42,10 @@ public class CommonLoggerAutoConfiguration {
         List<StructuredLogCustomizer> customizers = customizersProvider.getIfAvailable(Collections::emptyList);
         return new LoggingAspect(properties, customizers);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public StructuredLogger structuredLogger(CommonLoggerProperties properties) {
+        return new StructuredLogger(properties);
+    }
 }
