@@ -105,15 +105,12 @@ public class StructuredLogger {
                 StringWriter sw = new StringWriter();
                 objectMapper.writeValue(sw, finalPayload);
                 String jsonLog = sw.toString();
-                
-                switch (level) {
-                    case TRACE: log.trace(jsonLog); break;
-                    case DEBUG: log.debug(jsonLog); break;
-                    case WARN:  log.warn(jsonLog);  break;
-                    case ERROR: log.error(jsonLog); break;
-                    default:    log.info(jsonLog);  break;
-                }
+
+                // Print directly to the console to avoid logging framework prefixes
+                System.out.println(jsonLog);
+
             } catch (Exception e) {
+                // Fallback to the standard logger if JSON serialization fails
                 log.error("Failed to serialize structured log payload", e);
             }
         }
