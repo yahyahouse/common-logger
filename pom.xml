@@ -13,7 +13,7 @@
 
     <groupId>com.github.yahyahouse</groupId>
     <artifactId>common-logger</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <name>common-logger</name>
     <description>Spring Boot friendly logger library</description>
     <packaging>jar</packaging>

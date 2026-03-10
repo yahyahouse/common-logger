@@ -43,6 +43,7 @@ public class StructuredLogger {
         private final Map<String, Object> payload = new HashMap<>();
         private LogLevel successLevel;
         private LogLevel errorLevel = LogLevel.ERROR;
+        private boolean httpStatusCodeSet = false;
 
         private StructuredLogBuilder() {
             // Initialize with default values from properties
@@ -68,6 +69,7 @@ public class StructuredLogger {
 
         public StructuredLogBuilder withHttpStatusCode(int statusCode) {
             this.payload.put("httpStatusCode", statusCode);
+            this.httpStatusCodeSet = true;
             return this;
         }
 
@@ -139,7 +141,9 @@ public class StructuredLogger {
             this.payload.put("logPoint", "Error");
             this.payload.put("logException", throwable.toString());
             this.payload.put("error", throwable.getMessage());
-            this.payload.put("httpStatusCode", properties.getErrorHttpStatusCode());
+            if (!this.httpStatusCodeSet) {
+                this.payload.put("httpStatusCode", properties.getErrorHttpStatusCode());
+            }
             this.payload.put("processTime", processTimeMillis);
             log(this.errorLevel, this.payload);
         }
