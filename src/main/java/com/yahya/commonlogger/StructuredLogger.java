@@ -94,6 +94,10 @@ public class StructuredLogger {
         }
         
         private void log(LogLevel level, Map<String, Object> finalPayload) {
+            if (!isLevelEnabled(level)) {
+                return;
+            }
+
             finalPayload.put("logLevel", level.name().toLowerCase());
             finalPayload.put("logTimestamp", Instant.now().toString());
             
@@ -108,16 +112,26 @@ public class StructuredLogger {
                 objectMapper.writeValue(sw, finalPayload);
                 String jsonLog = sw.toString();
                 
-                switch (level) {
-                    case TRACE: log.trace(jsonLog); break;
-                    case DEBUG: log.debug(jsonLog); break;
-                    case WARN:  log.warn(jsonLog);  break;
-                    case ERROR: log.error(jsonLog); break;
-                    default:    log.info(jsonLog);  break;
+                if (level == LogLevel.ERROR || level == LogLevel.WARN) {
+                    System.err.println(jsonLog);
+                } else {
+                    System.out.println(jsonLog);
                 }
             } catch (Exception e) {
+                // Fallback to basic logging if JSON serialization fails
                 log.error("Failed to serialize structured log payload", e);
             }
+        }
+
+        private boolean isLevelEnabled(LogLevel level) {
+            return switch (level) {
+                case TRACE -> log.isTraceEnabled();
+                case DEBUG -> log.isDebugEnabled();
+                case INFO -> log.isInfoEnabled();
+                case WARN -> log.isWarnEnabled();
+                case ERROR, FATAL -> log.isErrorEnabled();
+                case OFF -> false;
+            };
         }
 
         /**
