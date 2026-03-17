@@ -1,4 +1,6 @@
-/target/
+/# Maven settings with credentials
+maven-settings.xml
+target/
 /.idea/
 /.m2/
 *.iml
