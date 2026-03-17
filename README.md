@@ -2,190 +2,161 @@
 
 Spring Boot friendly logger library that provides correlation id handling and an AOP-based `@Loggable` annotation for consistent, structured method logging.
 
-Dokumentasi lengkap: lihat `docs/README.md`.
-
 ## Fitur
-- Auto-configuration (`CommonLoggerAutoConfiguration`) terdaftar otomatis lewat Spring Boot 3 `AutoConfiguration.imports`.
-- Filter `CorrelationIdFilter` memastikan setiap request HTTP memiliki correlation id yang disimpan di MDC dan dikembalikan di header response.
-- `@Loggable` + `LoggingAspect` menghasilkan log JSON terstruktur dengan pola seperti contoh: `{"logLevel":"info","apiId":"SendNotification","httpStatusCode":200,...}`.
+- **Auto-configuration**: Terdaftar otomatis via Spring Boot `AutoConfiguration.imports`.
+- **Correlation ID**: `CorrelationIdFilter` memastikan setiap request HTTP memiliki ID unik yang disimpan di MDC dan dikembalikan di header response.
+- **Structured Logging**: `@Loggable` + `LoggingAspect` menghasilkan log JSON terstruktur yang siap dikonsumsi oleh ELK/Splunk/CloudWatch.
+- **Customizable**: Tambahkan field dinamis ke log Anda menggunakan `StructuredLogCustomizer`.
 
-## Cara pakai
-1. Tambahkan dependency ke project Spring Boot Anda (Maven):
-   - Jika sudah dipublish ke Maven Central/registry internal:
-     ```xml
-     <dependency>
-       <groupId>com.github.yahyahouse</groupId>
-       <artifactId>common-logger</artifactId>
-       <version>1.0.2</version>
-     </dependency>
-     ```
-   - Jika ingin langsung konsumsi dari GitHub (JitPack) dengan tag `1.0.2`:
-     ```xml
-     <repositories>
-       <repository>
-         <id>jitpack.io</id>
-         <url>https://jitpack.io</url>
-       </repository>
-     </repositories>
+## Instalasi
 
-     <dependency>
-       <groupId>com.github.yahyahouse</groupId>
-       <artifactId>common-logger</artifactId>
-       <version>1.0.2</version>
-     </dependency>
-     ```
+Tambahkan dependency berikut ke `pom.xml` Anda:
 
-2. Annotasi class atau method dengan `@Loggable` untuk mengaktifkan logging:
-   ```java
-   import com.yahya.commonlogger.Loggable;
-
-   @Service
-   public class ExampleService {
-       @Loggable
-       public String hello(String name) {
-           return "Hello " + name;
-       }
-   }
-   ```
-
-3. Opsi konfigurasi (application.yml):
-   ```yaml
-   common:
-     logger:
-       correlation-id-header: X-Correlation-Id            # header yang dibaca/ditulis
-       correlation-id-mdc-key: correlationId              # key MDC utama (dipakai juga sebagai default transactionId)
-       transaction-id-mdc-key: correlationId              # key MDC untuk transactionId (opsional)
-       api-id: SendNotification                           # identifier API/use case
-       log-level: INFO                                    # level log untuk eksekusi sukses (@Loggable)
-       success-http-status-code: 200                      # status sukses
-       error-http-status-code: 500                        # status gagal
-   ```
-   Jika memakai `application.properties`, ekuivalennya:
-   ```properties
-   common.logger.correlation-id-header=X-Correlation-Id
-   common.logger.correlation-id-mdc-key=correlationId
-   common.logger.transaction-id-mdc-key=correlationId
-   common.logger.api-id=SendNotification
-   common.logger.log-level=INFO
-   common.logger.success-http-status-code=200
-   common.logger.error-http-status-code=500
-   ```
-
-   Atau konfigurasi langsung di kode (tanpa file config) dengan mendeklarasikan bean `CommonLoggerProperties`:
-   ```java
-   import com.yahya.commonlogger.CommonLoggerProperties;
-   import org.springframework.context.annotation.Bean;
-   import org.springframework.context.annotation.Configuration;
-
-   @Configuration
-   public class LoggerConfig {
-       @Bean
-       CommonLoggerProperties commonLoggerProperties() {
-           CommonLoggerProperties props = new CommonLoggerProperties();
-           props.setCorrelationIdHeader("X-Trace-Id");
-           props.setCorrelationIdMdcKey("traceId");
-           props.setApiId("MyApi");
-           props.setSuccessHttpStatusCode(200);
-           props.setErrorHttpStatusCode(500);
-           return props;
-       }
-   }
-   ```
-
-Library ini ditujukan sebagai pondasi; Anda dapat menambahkan formatter, appender, atau sink log lain di atasnya sesuai kebutuhan.
-
-## Langkah cepat (Spring Boot)
-1) Tambahkan dependency di `pom.xml`:
 ```xml
 <dependency>
-  <groupId>com.yahya</groupId>
-  <artifactId>common-logger</artifactId>
-     <version>1.0.1</version>
+    <groupId>io.github.yahyahouse</groupId>
+    <artifactId>common-logger</artifactId>
+    <version>1.0.6</version>
 </dependency>
 ```
-2) Konfigurasi `application.properties` hanya untuk menentukan level log sukses yang ingin ditampilkan (log ERROR selalu keluar):
-```properties
-common.logger.log-level=INFO        # pilih INFO/DEBUG/TRACE; exception selalu di ERROR
-# jika diset INFO, log sukses pada level DEBUG tidak tercetak.
-# jika diset DEBUG, aktifkan juga logger paketnya:
-logging.level.com.yahya.commonlogger=DEBUG
+
+Jika Anda menggunakan Gradle:
+
+```kotlin
+implementation("io.github.yahyahouse:common-logger:1.0.6")
 ```
-3) Tandai method/class yang ingin dilog dengan `@Loggable`:
+
+## Cara Penggunaan
+
+### 1. Aktifkan Logging pada Method atau Class
+Cukup tambahkan anotasi `@Loggable` pada service atau controller Anda.
+
 ```java
 import com.yahya.commonlogger.Loggable;
+import org.springframework.stereotype.Service;
 
 @Service
-public class ExampleService {
+public class MyService {
+
     @Loggable
-    public String send(String payload) {
-        return "ok";
+    public String processData(String input) {
+        // Log JSON otomatis akan dicetak saat method selesai
+        return "Processed: " + input;
     }
 }
 ```
-4) Jalankan aplikasi. Setiap pemanggilan method `@Loggable` akan mencetak JSON ke stdout/stderr dengan field: `logLevel`, `apiId`, `httpStatusCode`, `transactionId`, `logMessage`, `logPoint`, `logTimestamp`, `processTime` (error menambah `error` + `logException`).
 
-### Alternatif: set log-level langsung di kode (tanpa file config)
-```java
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import java.util.Map;
+### 2. Konfigurasi (Optional)
+Anda dapat menyesuaikan perilaku logger melalui `application.properties` atau `application.yml`:
 
-@SpringBootApplication
-public class DemoApplication {
-    public static void main(String[] args) {
-        SpringApplication app = new SpringApplication(DemoApplication.class);
-        app.setDefaultProperties(Map.of(
-            "common.logger.log-level", "INFO"  // atau DEBUG/TRACE
-        ));
-        app.run(args);
-    }
-}
+```properties
+# Custom Header untuk Correlation ID (Default: X-Correlation-Id)
+common.logger.correlation-id-header=X-Trace-Id
+
+# Key MDC untuk Correlation ID (Default: correlationId)
+common.logger.correlation-id-mdc-key=traceId
+
+# Identifier API untuk log (Default: N/A)
+common.logger.api-id=MyAwesomeAPI
+
+# Log Level untuk eksekusi sukses (Default: INFO)
+common.logger.log-level=DEBUG
+
+# HTTP Status Code Default untuk log (Default: 200/500)
+common.logger.success-http-status-code=200
+common.logger.error-http-status-code=400
 ```
-Setelah itu, cukup anotasi method dengan `@Loggable` seperti biasa.
 
-## Menggunakan log-nya
-- Payload dikirim langsung ke stdout/stderr sebagai JSON tanpa prefix logger.
-- Correlation id otomatis disiapkan oleh `CorrelationIdFilter` (jika starter web ada). Key `transactionId` diambil dari MDC dengan key yang dapat dikonfigurasi (default: `correlationId`). Header request dibaca dari `correlation-id-header`; jika tidak ada, nilai baru di-generate dan dikembalikan di response.
-- Anda dapat menambah/override field dinamis per call lewat `StructuredLogCustomizer`.
-- Agar log terlihat, pastikan level logger `com.yahya.commonlogger` diaktifkan minimal pada level yang Anda set di `log-level`.
-- Build library ini dengan Maven: `mvn clean package` (menghasilkan JAR biasa, bukan fat jar).
+### 3. Kustomisasi Log (StructuredLogCustomizer)
+Jika Anda ingin menambahkan field tambahan (seperti `userId` atau `tenantId`) ke setiap log secara otomatis:
 
-## Customizer contoh
 ```java
 import com.yahya.commonlogger.StructuredLogCustomizer;
-import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import java.util.Map;
 
 @Configuration
-class LoggingCustomizerConfig {
-    @Bean
-    StructuredLogCustomizer userLogCustomizer() {
-        return (Map<String, Object> payload, ProceedingJoinPoint jp, Object result, long duration, boolean success, Throwable failure) -> {
-            payload.put("tenantId", resolveTenant());
-            payload.put("durationBucket", duration > 500 ? "SLOW" : "FAST");
-        };
-    }
+public class MyLogConfig {
 
-    private String resolveTenant() {
-        return "default-tenant";
+    @Bean
+    public StructuredLogCustomizer customFields() {
+        return (payload, joinPoint, result, duration, success, failure) -> {
+            payload.put("custom_field", "my_value");
+            if (!success) {
+                payload.put("alert_level", "HIGH");
+            }
+        };
     }
 }
 ```
 
-## Format log terstruktur
-`LoggingAspect` mengeluarkan log berbentuk JSON sederhana seperti:
+### 4. Logging Manual (StructuredLogger)
+Untuk skenario di mana Anda ingin melakukan logging secara manual (bukan via AOP), gunakan bean `StructuredLogger`. Ini menyediakan fluent API yang thread-safe.
+
+```java
+import com.yahya.commonlogger.StructuredLogger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.Map;
+
+@Service
+public class ManualLoggingService {
+
+    @Autowired
+    private StructuredLogger logger;
+
+    public void doSomethingManual(String msisdn) {
+        long startTime = System.currentTimeMillis();
+        try {
+            // Logika bisnis Anda
+            String transactionId = "TX-123";
+            
+            logger.newLog()
+                    .withTransactionId(transactionId)
+                    .withApiId("MY_MANUAL_API")
+                    .withRequest(Map.of("msisdn", msisdn))
+                    .onSuccess("Success Result", System.currentTimeMillis() - startTime);
+                    
+        } catch (Exception e) {
+            logger.newLog()
+                    .withApiId("MY_MANUAL_API")
+                    .withHttpStatusCode(500)
+                    .onFailure(e, System.currentTimeMillis() - startTime);
+        }
+    }
+}
+```
+
+## Format Log Output
+Output log berupa JSON satu baris yang memudahkan parsing oleh log aggregator:
+
 ```json
 {
   "logLevel": "info",
-  "apiId": "SendNotification",
+  "apiId": "MyAwesomeAPI",
   "httpStatusCode": 200,
-  "logMessage": "SendNotification-sendnotification Completed",
-  "logPoint": "SendNotification-sendnotification-End",
-  "logTimestamp": "2026-01-07T15:03:33.961+07:00",
-  "processTime": 16,
-  "transactionId": "pb19b977b85f011728001196723166aSae400000000"
+  "logMessage": "MyService-processData Completed",
+  "logPoint": "MyService-processData-End",
+  "logTimestamp": "2026-03-17T15:00:00.000+07:00",
+  "processTime": 45,
+  "transactionId": "a1b2c3d4e5f6g7h8"
 }
 ```
-`logLevel` mengikuti konfigurasi; field error otomatis ditambahkan saat terjadi exception termasuk `logException` (stack trace ter-escape). `transactionId` diambil dari MDC (fallback: `correlationId`). Field tambahan bisa ditambahkan via `StructuredLogCustomizer`.
+
+Jika terjadi error, field tambahan akan muncul:
+```json
+{
+  ...
+  "logLevel": "error",
+  "httpStatusCode": 400,
+  "error": "Bad Request",
+  "logException": "java.lang.RuntimeException: Something went wrong..."
+}
+```
+
+## Requirements
+- Java 17+
+- Spring Boot 3.x
+
+## Lisensi
+Distributed under the Apache License, Version 2.0. See `LICENSE` for more information.
