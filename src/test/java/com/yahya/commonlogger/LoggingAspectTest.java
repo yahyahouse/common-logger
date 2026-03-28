@@ -195,6 +195,27 @@ class LoggingAspectTest {
         assertThat(logs).doesNotContain("\"correlationId\":");
     }
 
+    @Test
+    void logsStructuredPayloadWithMultipleCustomizers() throws Throwable {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        props.setApiId("MultiCustomizerApi");
+
+        StructuredLogCustomizer customizer1 = (payload, jp, result, duration, success, failure) -> {
+            payload.put("field1", "value1");
+        };
+        StructuredLogCustomizer customizer2 = (payload, jp, result, duration, success, failure) -> {
+            payload.put("field2", "value2");
+        };
+        LoggingAspect aspect = new LoggingAspect(props, List.of(customizer1, customizer2));
+
+        ProceedingJoinPoint pjp = mockJoinPoint("doWork", "com.example.Demo", new Object[0], "ok");
+        String logs = captureOutput(() -> aspect.logAround(pjp));
+
+        assertThat(logs).contains("\"field1\": \"value1\"");
+        assertThat(logs).contains("\"field2\": \"value2\"");
+        assertThat(logs).contains("\"apiId\": \"MultiCustomizerApi\"");
+    }
+
     private String captureOutput(ThrowingCallable callable) throws Throwable {
         PrintStream originalOut = System.out;
         PrintStream originalErr = System.err;

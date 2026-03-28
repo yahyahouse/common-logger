@@ -1,5 +1,6 @@
 package com.yahya.commonlogger;
 
+import jakarta.annotation.Nonnull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,8 +25,8 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+                                    @Nonnull HttpServletResponse response,
+                                    @Nonnull FilterChain filterChain) throws ServletException, IOException {
         String headerName = properties.getCorrelationIdHeader();
         String correlationId = request.getHeader(headerName);
         if (!StringUtils.hasText(correlationId)) {

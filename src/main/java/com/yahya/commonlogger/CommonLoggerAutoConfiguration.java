@@ -7,6 +7,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
 import java.util.Collections;
@@ -14,15 +15,10 @@ import java.util.List;
 
 @AutoConfiguration
 @ConditionalOnClass(Logger.class)
+@EnableConfigurationProperties(CommonLoggerProperties.class)
 public class CommonLoggerAutoConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(CommonLoggerAutoConfiguration.class);
-
-    @Bean
-    @ConditionalOnMissingBean
-    public CommonLoggerProperties commonLoggerProperties() {
-        return new CommonLoggerProperties();
-    }
 
     @Bean
     @ConditionalOnClass(name = "jakarta.servlet.Filter")

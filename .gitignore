@@ -1,4 +1,6 @@
 /# Maven settings with credentials
+settings.xml
+.mvn/settings.xml
 maven-settings.xml
 target/
 /.idea/
