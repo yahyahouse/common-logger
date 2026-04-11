@@ -1,28 +1,58 @@
 package com.yahya.commonlogger;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StructuredLoggerTest {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private ch.qos.logback.classic.Logger structuredLoggerLogger;
+    private ListAppender<ILoggingEvent> appender;
+
+    @BeforeEach
+    void setUp() {
+        structuredLoggerLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StructuredLogger.class);
+        appender = new ListAppender<>();
+        appender.start();
+        structuredLoggerLogger.addAppender(appender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        structuredLoggerLogger.detachAppender(appender);
+    }
+
+    private String capturedLogs() {
+        return appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .collect(Collectors.joining("\n"));
+    }
+
     @Test
     void onSuccessShouldLogCorrectPayload() {
         CommonLoggerProperties props = new CommonLoggerProperties();
         props.setApiId("TestApi");
-        StructuredLogger logger = new StructuredLogger(props);
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
 
-        String logs = captureOutput(() -> {
-            logger.newLog()
-                    .withTransactionId("tx-123")
-                    .withCorrelationId("corr-456")
-                    .withRequest("my-request")
-                    .withAdditionalData("customKey", "customValue")
-                    .onSuccess("my-response", 150);
-        });
+        logger.newLog()
+                .withTransactionId("tx-123")
+                .withCorrelationId("corr-456")
+                .withRequest("my-request")
+                .withAdditionalData("customKey", "customValue")
+                .onSuccess("my-response", 150);
 
+        String logs = capturedLogs();
         assertThat(logs).contains("\"apiId\":\"TestApi\"");
         assertThat(logs).contains("\"transactionId\":\"tx-123\"");
         assertThat(logs).contains("\"correlationId\":\"corr-456\"");
@@ -37,52 +67,79 @@ class StructuredLoggerTest {
     @Test
     void onFailureShouldLogCorrectPayload() {
         CommonLoggerProperties props = new CommonLoggerProperties();
-        StructuredLogger logger = new StructuredLogger(props);
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
 
-        String logs = captureOutput(() -> {
-            logger.newLog()
-                    .withApiId("ErrorApi")
-                    .onFailure(new RuntimeException("Something went wrong"), 200);
-        });
+        logger.newLog()
+                .withApiId("ErrorApi")
+                .onFailure(new RuntimeException("Something went wrong"), 200);
 
+        String logs = capturedLogs();
         assertThat(logs).contains("\"apiId\":\"ErrorApi\"");
         assertThat(logs).contains("\"logPoint\":\"Error\"");
         assertThat(logs).contains("\"error\":\"Something went wrong\"");
-        assertThat(logs).contains("\"logException\":\"java.lang.RuntimeException: Something went wrong\"");
+        assertThat(logs).contains("\"logException\":\"java.lang.RuntimeException: Something went wrong");
+        assertThat(logs).contains("at com.yahya.commonlogger.StructuredLoggerTest");
         assertThat(logs).contains("\"httpStatusCode\":500");
         assertThat(logs).contains("\"processTime\":200");
         assertThat(logs).contains("\"logLevel\":\"error\"");
     }
 
     @Test
-    void onFailureShouldRespectCustomHttpStatusCode() throws Throwable {
+    void onFailureShouldAddServerErrorType() {
         CommonLoggerProperties props = new CommonLoggerProperties();
-        props.setErrorHttpStatusCode(500); // default
-        StructuredLogger logger = new StructuredLogger(props);
+        props.setErrorHttpStatusCode(500);
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
 
-        String logs = captureOutput(() -> {
-            logger.newLog()
-                    .withHttpStatusCode(400)
-                    .onFailure(new Exception("Wrong pin"), 100);
-        });
+        logger.newLog()
+                .onFailure(new RuntimeException("internal error"), 100);
 
-        assertThat(logs).contains("\"httpStatusCode\":400");
-        assertThat(logs).doesNotContain("\"httpStatusCode\":500");
+        assertThat(capturedLogs()).contains("\"errorType\":\"SERVER_ERROR\"");
     }
 
-    private String captureOutput(Runnable runnable) {
-        PrintStream originalOut = System.out;
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream ps = new PrintStream(baos);
-        System.setOut(ps);
-        System.setErr(ps);
+    @Test
+    void onFailureShouldAddClientErrorTypeWhenStatusIs4xx() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
+
+        logger.newLog()
+                .withHttpStatusCode(404)
+                .onFailure(new RuntimeException("not found"), 50);
+
+        assertThat(capturedLogs()).contains("\"errorType\":\"CLIENT_ERROR\"");
+    }
+
+    @Test
+    void doesNotLogWhenLevelDisabled() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
+
+        ch.qos.logback.classic.Logger slf4jLogger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(StructuredLogger.class);
+        ch.qos.logback.classic.Level original = slf4jLogger.getLevel();
+        slf4jLogger.setLevel(ch.qos.logback.classic.Level.ERROR);
         try {
-            runnable.run();
+            logger.newLog()
+                    .withApiId("SilentApi")
+                    .onSuccess("response", 10);
         } finally {
-            System.setOut(originalOut);
-            System.setErr(originalErr);
+            slf4jLogger.setLevel(original);
         }
-        return baos.toString();
+
+        assertThat(appender.list).isEmpty();
+    }
+
+    @Test
+    void onFailureShouldRespectCustomHttpStatusCode() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        props.setErrorHttpStatusCode(500);
+        StructuredLogger logger = new StructuredLogger(props, OBJECT_MAPPER, List.of());
+
+        logger.newLog()
+                .withHttpStatusCode(400)
+                .onFailure(new Exception("Wrong pin"), 100);
+
+        String logs = capturedLogs();
+        assertThat(logs).contains("\"httpStatusCode\":400");
+        assertThat(logs).doesNotContain("\"httpStatusCode\":500");
     }
 }

@@ -3,6 +3,9 @@ package com.yahya.commonlogger;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.logging.LogLevel;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @ConfigurationProperties(prefix = "common.logger")
 public class CommonLoggerProperties {
     private String correlationIdHeader = "X-Correlation-Id";
@@ -33,11 +36,21 @@ public class CommonLoggerProperties {
      */
     private String transactionIdMdcKey;
 
+    /**
+     * List of payload field names whose values will be replaced with {@code "***"} in log output.
+     * Nested map fields are also masked recursively.
+     * Example: {@code common.logger.sensitive-fields=password,token,cardNumber}
+     */
+    private List<String> sensitiveFields = new ArrayList<>();
+
     public String getCorrelationIdHeader() {
         return correlationIdHeader;
     }
 
     public void setCorrelationIdHeader(String correlationIdHeader) {
+        if (correlationIdHeader == null || correlationIdHeader.isBlank()) {
+            throw new IllegalArgumentException("common.logger.correlation-id-header must not be blank");
+        }
         this.correlationIdHeader = correlationIdHeader;
     }
 
@@ -46,6 +59,9 @@ public class CommonLoggerProperties {
     }
 
     public void setCorrelationIdMdcKey(String correlationIdMdcKey) {
+        if (correlationIdMdcKey == null || correlationIdMdcKey.isBlank()) {
+            throw new IllegalArgumentException("common.logger.correlation-id-mdc-key must not be blank");
+        }
         this.correlationIdMdcKey = correlationIdMdcKey;
     }
 
@@ -70,6 +86,10 @@ public class CommonLoggerProperties {
     }
 
     public void setSuccessHttpStatusCode(int successHttpStatusCode) {
+        if (successHttpStatusCode < 100 || successHttpStatusCode > 599) {
+            throw new IllegalArgumentException(
+                    "common.logger.success-http-status-code must be between 100 and 599, but was: " + successHttpStatusCode);
+        }
         this.successHttpStatusCode = successHttpStatusCode;
     }
 
@@ -78,6 +98,10 @@ public class CommonLoggerProperties {
     }
 
     public void setErrorHttpStatusCode(int errorHttpStatusCode) {
+        if (errorHttpStatusCode < 100 || errorHttpStatusCode > 599) {
+            throw new IllegalArgumentException(
+                    "common.logger.error-http-status-code must be between 100 and 599, but was: " + errorHttpStatusCode);
+        }
         this.errorHttpStatusCode = errorHttpStatusCode;
     }
 
@@ -87,5 +111,13 @@ public class CommonLoggerProperties {
 
     public void setTransactionIdMdcKey(String transactionIdMdcKey) {
         this.transactionIdMdcKey = transactionIdMdcKey;
+    }
+
+    public List<String> getSensitiveFields() {
+        return sensitiveFields;
+    }
+
+    public void setSensitiveFields(List<String> sensitiveFields) {
+        this.sensitiveFields = sensitiveFields == null ? new ArrayList<>() : sensitiveFields;
     }
 }

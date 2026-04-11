@@ -4,27 +4,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.logging.LogLevel;
-import org.springframework.stereotype.Component;
 
 import java.io.StringWriter;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * A service for manually creating structured JSON logs.
  * Provides a thread-safe, fluent builder API for constructing and writing logs.
  */
-@Component
 public class StructuredLogger {
 
     private static final Logger log = LoggerFactory.getLogger(StructuredLogger.class);
     private final CommonLoggerProperties properties;
     private final ObjectMapper objectMapper;
+    private final List<SensitiveDataMasker> maskers;
 
-    public StructuredLogger(CommonLoggerProperties properties) {
+    public StructuredLogger(CommonLoggerProperties properties,
+                            ObjectMapper objectMapper,
+                            List<SensitiveDataMasker> maskers) {
         this.properties = properties;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
+        this.maskers = maskers == null ? Collections.emptyList() : maskers;
     }
 
     /**
@@ -100,6 +104,14 @@ public class StructuredLogger {
 
             finalPayload.put("logLevel", level.name().toLowerCase());
             finalPayload.put("logTimestamp", Instant.now().toString());
+
+            for (SensitiveDataMasker masker : maskers) {
+                try {
+                    masker.mask(finalPayload);
+                } catch (Exception e) {
+                    log.warn("SensitiveDataMasker [{}] failed: {}", masker.getClass().getName(), e.getMessage());
+                }
+            }
             
             String logMessage = "Structured log";
             if (finalPayload.containsKey("apiId")) {
@@ -112,15 +124,21 @@ public class StructuredLogger {
                 objectMapper.writeValue(sw, finalPayload);
                 String jsonLog = sw.toString();
                 
-                if (level == LogLevel.ERROR || level == LogLevel.WARN) {
-                    System.err.println(jsonLog);
-                } else {
-                    System.out.println(jsonLog);
+                switch (level) {
+                    case TRACE -> log.trace(jsonLog);
+                    case DEBUG -> log.debug(jsonLog);
+                    case WARN -> log.warn(jsonLog);
+                    case ERROR, FATAL -> log.error(jsonLog);
+                    default -> log.info(jsonLog);
                 }
             } catch (Exception e) {
                 // Fallback to basic logging if JSON serialization fails
                 log.error("Failed to serialize structured log payload", e);
             }
+        }
+
+        private String buildExceptionDetails(Throwable throwable) {
+            return ExceptionUtils.getStackTrace(throwable);
         }
 
         private boolean isLevelEnabled(LogLevel level) {
@@ -153,13 +171,24 @@ public class StructuredLogger {
          */
         public void onFailure(Throwable throwable, long processTimeMillis) {
             this.payload.put("logPoint", "Error");
-            this.payload.put("logException", throwable.toString());
+            this.payload.put("logException", buildExceptionDetails(throwable));
             this.payload.put("error", throwable.getMessage());
             if (!this.httpStatusCodeSet) {
                 this.payload.put("httpStatusCode", properties.getErrorHttpStatusCode());
             }
+            int statusCode = (int) this.payload.get("httpStatusCode");
+            this.payload.put("errorType", resolveErrorType(statusCode));
             this.payload.put("processTime", processTimeMillis);
             log(this.errorLevel, this.payload);
+        }
+
+        private String resolveErrorType(int statusCode) {
+            if (statusCode >= 400 && statusCode < 500) {
+                return "CLIENT_ERROR";
+            } else if (statusCode >= 500 && statusCode < 600) {
+                return "SERVER_ERROR";
+            }
+            return "UNKNOWN_ERROR";
         }
     }
 }

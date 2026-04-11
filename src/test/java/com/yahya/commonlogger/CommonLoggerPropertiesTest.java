@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.logging.LogLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CommonLoggerPropertiesTest {
 
@@ -51,6 +52,46 @@ class CommonLoggerPropertiesTest {
         CommonLoggerProperties props = new CommonLoggerProperties();
         props.setApiId(null);
         assertThat(props.getApiId()).isEqualTo("");
+    }
+
+    @Test
+    void rejectsBlankCorrelationIdHeader() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        assertThatThrownBy(() -> props.setCorrelationIdHeader(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("correlation-id-header");
+        assertThatThrownBy(() -> props.setCorrelationIdHeader(null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsBlankCorrelationIdMdcKey() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        assertThatThrownBy(() -> props.setCorrelationIdMdcKey("  "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("correlation-id-mdc-key");
+        assertThatThrownBy(() -> props.setCorrelationIdMdcKey(null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsInvalidSuccessHttpStatusCode() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        assertThatThrownBy(() -> props.setSuccessHttpStatusCode(99))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("success-http-status-code");
+        assertThatThrownBy(() -> props.setSuccessHttpStatusCode(600))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsInvalidErrorHttpStatusCode() {
+        CommonLoggerProperties props = new CommonLoggerProperties();
+        assertThatThrownBy(() -> props.setErrorHttpStatusCode(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("error-http-status-code");
+        assertThatThrownBy(() -> props.setErrorHttpStatusCode(600))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.yahya.commonlogger;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -9,17 +11,29 @@ import org.slf4j.MDC;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.util.StringUtils;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
+/**
+ * AOP aspect that intercepts methods annotated with {@link Loggable} (on method or class level)
+ * and emits a structured JSON log payload for each invocation.
+ *
+ * <p>The payload includes: {@code logLevel}, {@code apiId}, {@code httpStatusCode},
+ * {@code logMessage}, {@code logPoint}, {@code logTimestamp}, {@code processTime},
+ * {@code transactionId}. On failure, {@code errorType}, {@code error}, and
+ * {@code logException} (full stack trace) are added.
+ *
+ * <p>The payload can be extended via {@link StructuredLogCustomizer} beans registered
+ * in the Spring context. Sensitive fields can be redacted via {@link SensitiveDataMasker} beans.
+ *
+ * <p>Registered automatically by {@link CommonLoggerAutoConfiguration} when AspectJ is on
+ * the classpath.
+ */
 @Aspect
 public class LoggingAspect {
 
@@ -27,10 +41,17 @@ public class LoggingAspect {
 
     private final CommonLoggerProperties properties;
     private final List<StructuredLogCustomizer> customizers;
+    private final List<SensitiveDataMasker> maskers;
+    private final ObjectMapper objectMapper;
 
-    public LoggingAspect(CommonLoggerProperties properties, List<StructuredLogCustomizer> customizers) {
+    public LoggingAspect(CommonLoggerProperties properties,
+                         List<StructuredLogCustomizer> customizers,
+                         List<SensitiveDataMasker> maskers,
+                         ObjectMapper objectMapper) {
         this.properties = properties;
         this.customizers = customizers == null ? Collections.emptyList() : customizers;
+        this.maskers = maskers == null ? Collections.emptyList() : maskers;
+        this.objectMapper = objectMapper;
     }
 
     @Around("@annotation(com.yahya.commonlogger.Loggable) || @within(com.yahya.commonlogger.Loggable)")
@@ -54,7 +75,7 @@ public class LoggingAspect {
 
             if (shouldLog) {
                 String payload = buildStructuredPayload(joinPoint, result, duration, success, failure, levelToUse);
-                emitPlain(payload, failure != null);
+                emit(payload, levelToUse);
             }
         }
     }
@@ -65,10 +86,11 @@ public class LoggingAspect {
                                           boolean success,
                                           Throwable failure,
                                           LogLevel logLevel) {
+        int statusCode = resolveStatusCode(failure);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("logLevel", logLevel.name().toLowerCase(Locale.ROOT));
         payload.put("apiId", resolveApiId(joinPoint));
-        payload.put("httpStatusCode", resolveStatusCode(failure));
+        payload.put("httpStatusCode", statusCode);
         payload.put("logMessage", buildLogMessage(joinPoint, success));
         payload.put("logPoint", buildLogPoint(joinPoint, success));
         payload.put("logTimestamp", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(OffsetDateTime.now()));
@@ -76,6 +98,7 @@ public class LoggingAspect {
         payload.put("transactionId", resolveTransactionId());
 
         if (failure != null) {
+            payload.put("errorType", resolveErrorType(statusCode));
             payload.put("error", failure.getMessage());
             payload.put("logException", buildExceptionDetails(failure));
         }
@@ -88,7 +111,20 @@ public class LoggingAspect {
             }
         }
 
-        return toJson(payload);
+        for (SensitiveDataMasker masker : maskers) {
+            try {
+                masker.mask(payload);
+            } catch (Exception ex) {
+                logger.warn("SensitiveDataMasker [{}] failed: {}", masker.getClass().getName(), ex.getMessage());
+            }
+        }
+
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            logger.warn("Failed to serialize log payload: {}", ex.getMessage());
+            return "{\"logLevel\":\"" + logLevel.name().toLowerCase(Locale.ROOT) + "\",\"error\":\"log serialization failed\"}";
+        }
     }
 
     private LogLevel resolveConfiguredLevel() {
@@ -107,11 +143,13 @@ public class LoggingAspect {
         };
     }
 
-    private void emitPlain(String payload, boolean isError) {
-        if (isError) {
-            System.err.println(payload);
-        } else {
-            System.out.println(payload);
+    private void emit(String payload, LogLevel level) {
+        switch (level) {
+            case TRACE -> logger.trace(payload);
+            case DEBUG -> logger.debug(payload);
+            case WARN -> logger.warn(payload);
+            case ERROR, FATAL -> logger.error(payload);
+            default -> logger.info(payload);
         }
     }
 
@@ -129,6 +167,15 @@ public class LoggingAspect {
 
     private int resolveStatusCode(Throwable failure) {
         return failure == null ? properties.getSuccessHttpStatusCode() : properties.getErrorHttpStatusCode();
+    }
+
+    private String resolveErrorType(int statusCode) {
+        if (statusCode >= 400 && statusCode < 500) {
+            return "CLIENT_ERROR";
+        } else if (statusCode >= 500 && statusCode < 600) {
+            return "SERVER_ERROR";
+        }
+        return "UNKNOWN_ERROR";
     }
 
     private String resolveTransactionId() {
@@ -155,45 +202,7 @@ public class LoggingAspect {
         return joinPoint.getSignature().getName().toLowerCase(Locale.ROOT);
     }
 
-    private String toJson(Map<String, Object> payload) {
-        StringBuilder builder = new StringBuilder("{ ");
-        Iterator<Map.Entry<String, Object>> iterator = payload.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, Object> entry = iterator.next();
-            builder.append("\"")
-                    .append(escape(entry.getKey()))
-                    .append("\": ")
-                    .append(formatValue(entry.getValue()));
-            if (iterator.hasNext()) {
-                builder.append(", ");
-            }
-        }
-        builder.append(" }");
-        return builder.toString();
-    }
-
-    private String formatValue(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof Number || value instanceof Boolean) {
-            return String.valueOf(value);
-        }
-        return "\"" + escape(String.valueOf(value)) + "\"";
-    }
-
-    private String escape(String value) {
-        return value
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\r", "\\r")
-                .replace("\n", "\\n")
-                .replace("\t", "\\t");
-    }
-
     private String buildExceptionDetails(Throwable failure) {
-        StringWriter sw = new StringWriter();
-        failure.printStackTrace(new PrintWriter(sw));
-        return sw.toString();
+        return ExceptionUtils.getStackTrace(failure);
     }
 }
