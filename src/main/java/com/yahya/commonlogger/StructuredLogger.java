@@ -176,7 +176,8 @@ public class StructuredLogger {
             if (!this.httpStatusCodeSet) {
                 this.payload.put("httpStatusCode", properties.getErrorHttpStatusCode());
             }
-            int statusCode = (int) this.payload.get("httpStatusCode");
+            Object rawStatusCode = this.payload.get("httpStatusCode");
+            int statusCode = rawStatusCode instanceof Number n ? n.intValue() : properties.getErrorHttpStatusCode();
             this.payload.put("errorType", resolveErrorType(statusCode));
             this.payload.put("processTime", processTimeMillis);
             log(this.errorLevel, this.payload);

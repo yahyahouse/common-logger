@@ -71,7 +71,8 @@ public class LoggingAspect {
             long duration = System.currentTimeMillis() - start;
             LogLevel configuredLevel = resolveConfiguredLevel();
             LogLevel levelToUse = failure != null ? LogLevel.ERROR : configuredLevel;
-            boolean shouldLog = failure != null ? logger.isErrorEnabled() : isLevelEnabled(configuredLevel);
+            boolean shouldLog = properties.getLogLevel() != LogLevel.OFF
+                    && (failure != null ? logger.isErrorEnabled() : isLevelEnabled(configuredLevel));
 
             if (shouldLog) {
                 String payload = buildStructuredPayload(joinPoint, result, duration, success, failure, levelToUse);
